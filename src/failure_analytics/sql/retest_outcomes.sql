@@ -1,5 +1,6 @@
 -- For every unit that failed first pass: what failed, and did it pass on
--- retest? A high retest pass rate (no fault found) for one failure mode
+-- retest? A high retest pass rate (no fault found) for one failure mode,
+-- measured over units that were actually retested,
 -- points at the test, not the unit.
 WITH ordered AS (
     SELECT run_id, dut_serial, station, outcome,
@@ -19,6 +20,7 @@ retest AS (
 SELECT f.failure_mode,
        f.first_station,
        COUNT(*)                                          AS failed_units,
+       COUNT(r.dut_serial)                               AS retested_units,
        SUM(r.retest_outcome = 'PASS')                    AS passed_retest,
        ROUND(100.0 * SUM(r.retest_outcome = 'PASS') / COUNT(r.dut_serial), 1) AS no_fault_found_pct
 FROM first_fail f

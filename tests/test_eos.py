@@ -56,6 +56,15 @@ def test_pareto_shares_add_up(db):
     assert set(pareto["failure_mode"]) <= {m[2] for m in MEASUREMENTS}
 
 
+def test_no_fault_found_uses_retested_units(db, findings):
+    """Regression: the rate was divided by all failed units, including ones never retested,
+    so the report and the SQL disagreed (82% vs 86%)."""
+    retests = db.retests().groupby("failure_mode")[["failed_units", "retested_units", "passed_retest"]].sum()
+    row = retests.loc["bus voltage"]
+    assert row["retested_units"] < row["failed_units"]  # some failures were never retested
+    assert findings["bus voltage"].no_fault_found_pct == pytest.approx(100 * row["passed_retest"] / row["retested_units"])
+
+
 def test_pareto_sql_matches_pandas(db):
     """Cross-check the SQL window-function query with an independent pandas count."""
     counts = db.failures()["failure_mode"].value_counts()

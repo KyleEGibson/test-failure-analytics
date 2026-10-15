@@ -254,7 +254,7 @@ def analyze(db: EOSDatabase, min_failures: int = 5) -> list[Finding]:
     """
     first_pass = db.first_pass()
     failures = db.failures()
-    retests = db.retests().groupby("failure_mode")[["failed_units", "passed_retest"]].sum()
+    retests = db.retests().groupby("failure_mode")[["retested_units", "passed_retest"]].sum()
     findings = []
     for mode, count in db.pareto().set_index("failure_mode")["failures"].items():
         if count < min_failures:
@@ -265,7 +265,8 @@ def analyze(db: EOSDatabase, min_failures: int = 5) -> list[Finding]:
         screen_window, explained = isolate(first_pass[window], flags[window])
         survivors = screen_window[screen_window["significant"] & screen_window["explained_by"].isna()]
         top = survivors.iloc[0] if onset and len(survivors) else None
-        nff = 100.0 * retests.loc[mode, "passed_retest"] / retests.loc[mode, "failed_units"] if mode in retests.index else 0.0
+        retested = retests.loc[mode, "retested_units"] if mode in retests.index else 0
+        nff = 100.0 * retests.loc[mode, "passed_retest"] / retested if retested else 0.0
 
         history = db.history(mode)
         if top is not None and top["factor"] == "station":

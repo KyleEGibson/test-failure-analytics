@@ -90,8 +90,8 @@
 
 <div class="callout"><strong>The Pareto points the wrong way.</strong>
   The top failure, <em>{{ eos.pareto_top.failure_mode }}</em> ({{ "%.0f"|format(eos.pareto_top.share_pct) }}% of failures),
-  is not a sensor defect at all: {{ "%.0f"|format(eos.by_mode["bus voltage"].no_fault_found_pct) }}% of those units passed when
-  retested on the other bench. Fixing the sensors' power supplies would have changed nothing.</div>
+  is not a sensor defect at all: {{ "%.0f"|format(eos.by_mode["bus voltage"].no_fault_found_pct) }}% of the retested units passed
+  on the other bench. Fixing the sensors' power supplies would have changed nothing.</div>
 
 <h3>Root cause isolation</h3>
 <table class="findings">
