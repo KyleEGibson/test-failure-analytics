@@ -63,6 +63,21 @@ def test_pareto_sql_matches_pandas(db):
     pd.testing.assert_series_equal(sql.sort_index(), counts.sort_index(), check_names=False)
 
 
+def test_plain_station_database_without_units_table(db, tmp_path):
+    """A results.db straight from the test station has no units table; it must still
+    analyze (lots 'unknown') and the file must not be modified."""
+    plain = tmp_path / "station.db"
+    with sqlite3.connect(db.path) as src, sqlite3.connect(plain) as dst:
+        src.backup(dst)
+        dst.execute("DROP TABLE units")
+    before = plain.read_bytes()
+    station_db = eos.EOSDatabase(plain)
+    assert set(station_db.first_pass()["gimbal_lot"]) == {"unknown"}
+    findings = {f.failure_mode: f for f in eos.analyze(station_db)}
+    assert findings["bus voltage"].level == "BENCH-02"  # still found without lot data
+    assert plain.read_bytes() == before
+
+
 # --------------------------------------------------------- statistics
 
 

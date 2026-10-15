@@ -1,5 +1,5 @@
 -- First test run of every unit (first-pass yield excludes retests),
--- joined to manufacturing records. Production week is counted from the
+-- joined to manufacturing records when a units table exists. Production week is counted from the
 -- first day in the database (week 1).
 WITH ordered AS (
     SELECT r.*,
@@ -15,12 +15,12 @@ SELECT o.run_id,
        o.station,
        o.operator,
        o.dut_firmware                                            AS firmware,
-       u.gimbal_lot,
-       u.cooler_lot,
-       u.detector_lot,
+       COALESCE(u.gimbal_lot, 'unknown')                         AS gimbal_lot,
+       COALESCE(u.cooler_lot, 'unknown')                         AS cooler_lot,
+       COALESCE(u.detector_lot, 'unknown')                       AS detector_lot,
        o.outcome = 'FAIL'                                        AS failed
 FROM ordered o
-JOIN units u ON u.serial = o.dut_serial
+LEFT JOIN units u ON u.serial = o.dut_serial
 CROSS JOIN origin
 WHERE o.attempt = 1
 ORDER BY o.started_at;

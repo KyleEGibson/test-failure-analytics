@@ -9,6 +9,8 @@ colorblind-safe categorical order (blue, orange, aqua).
 
 from __future__ import annotations
 
+import textwrap
+
 import pandas as pd
 import plotly.graph_objects as go
 
@@ -123,11 +125,13 @@ def weekly_failures_by_mode(first_pass: pd.DataFrame, failures: pd.DataFrame, to
 
 def pareto(pareto_frame: pd.DataFrame) -> go.Figure:
     """Pareto on ONE percent axis: bars are each mode's share, the line is the cumulative share."""
+    labels = ["<br>".join(textwrap.wrap(mode, 14)) for mode in pareto_frame["failure_mode"]]
     fig = go.Figure()
-    fig.add_bar(x=pareto_frame["failure_mode"], y=pareto_frame["share_pct"], name="Share of failures", meta="series-1",
-                customdata=pareto_frame["failures"],
-                hovertemplate="%{x}<br>%{y:.1f}% (%{customdata} failures)<extra></extra>")
-    fig.add_scatter(x=pareto_frame["failure_mode"], y=pareto_frame["cumulative_pct"], name="Cumulative share",
+    fig.add_bar(x=labels, y=pareto_frame["share_pct"], name="Share of failures", meta="series-1",
+                customdata=pareto_frame[["failures", "failure_mode"]],
+                hovertemplate="%{customdata[1]}<br>%{y:.1f}% (%{customdata[0]} failures)<extra></extra>")
+    fig.update_xaxes(tickangle=0)
+    fig.add_scatter(x=labels, y=pareto_frame["cumulative_pct"], name="Cumulative share",
                     mode="lines+markers", meta="series-2", line={"width": 2}, marker={"size": 8},
                     hovertemplate="cumulative %{y:.1f}%<extra></extra>")
     _hline(fig, 80, "80%", dash="dot")

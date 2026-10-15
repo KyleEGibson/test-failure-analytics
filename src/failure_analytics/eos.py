@@ -32,8 +32,18 @@ class EOSDatabase:
             raise FileNotFoundError(self.path)
 
     def query(self, name: str, **params) -> pd.DataFrame:
-        with sqlite3.connect(self.path) as conn:
+        conn = sqlite3.connect(f"file:{self.path.as_posix()}?mode=ro", uri=True)
+        try:
+            has_units = conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'units'").fetchone()
+            if not has_units:
+                # A plain station results.db has no manufacturing records; analyze
+                # it with every lot 'unknown'. TEMP tables never touch the file.
+                conn.execute("CREATE TEMP TABLE units (serial TEXT, build_date TEXT, gimbal_lot TEXT,"
+                             " cooler_lot TEXT, detector_lot TEXT)")
             return pd.read_sql_query(_sql(name), conn, params=params or None)
+        finally:
+            conn.close()
 
     def first_pass(self) -> pd.DataFrame:
         frame = self.query("first_pass_runs")
