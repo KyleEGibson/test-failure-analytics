@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Test Failure Analytics</title>
+<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@{{ plotly_version }}/plotly.min.js"></script>
+<meta name="description" content="Failure, yield and trend analysis of manufacturing test data: SPC, Pareto, root cause isolation.">
+<style>
+  :root {
+    color-scheme: light;
+    --page:#f9f9f7; --surface:#fcfcfb; --ink:#0b0b0b; --ink-2:#52514e; --muted:#898781;
+    --line:rgba(11,11,11,0.10); --grid:#e1e0d9; --accent:#2a78d6;
+    --c-equipment:#eb6834; --c-component:#2a78d6; --c-process:#1baf7a; --c-random:#898781;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --page:#0d0d0d; --surface:#1a1a19; --ink:#f0efec; --ink-2:#c3c2b7; --muted:#898781;
+      --line:rgba(255,255,255,0.10); --grid:#2c2c2a; --accent:#3987e5;
+      --c-equipment:#d95926; --c-component:#3987e5; --c-process:#199e70; --c-random:#898781;
+    }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--page); color:var(--ink); font:15px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  main { max-width:1080px; margin:0 auto; padding:32px 16px 64px; }
+  header h1 { font-size:28px; margin:0 0 6px; letter-spacing:-0.01em; }
+  header p { margin:0; color:var(--ink-2); max-width:760px; }
+  h2 { font-size:21px; margin:48px 0 4px; }
+  h3 { font-size:16px; margin:32px 0 6px; }
+  .eyebrow { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-top:48px; }
+  .eyebrow + h2 { margin-top:2px; }
+  p { max-width:760px; }
+  .muted { color:var(--muted); }
+  a { color:var(--accent); }
+  .tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; margin:20px 0; }
+  .tile { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:14px 16px; }
+  .tile .v { font-size:26px; font-weight:650; line-height:1.2; }
+  .tile .l { font-size:12.5px; color:var(--ink-2); margin-top:4px; }
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:8px 8px 4px; margin:14px 0 6px; overflow:hidden; }
+  details { margin:0 4px 10px; }
+  summary { cursor:pointer; color:var(--ink-2); font-size:13px; padding:4px 0; }
+  .table-wrap { overflow-x:auto; }
+  table.data, table.findings { border-collapse:collapse; width:100%; font-size:13px; font-variant-numeric:tabular-nums; }
+  table.data th, table.data td, table.findings th, table.findings td { padding:6px 10px; border-bottom:1px solid var(--grid); text-align:right; white-space:nowrap; }
+  table.data th:first-child, table.data td:first-child, table.findings td:first-child, table.findings th:first-child { text-align:left; }
+  table.findings td, table.findings th { text-align:left; white-space:normal; vertical-align:top; }
+  table.data th, table.findings th { color:var(--muted); font-weight:600; font-size:12px; }
+  .tag { display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600; white-space:nowrap; }
+  .tag::before { content:""; width:9px; height:9px; border-radius:2px; background:currentColor; }
+  .c-equipment { color:var(--c-equipment); } .c-component { color:var(--c-component); }
+  .c-process { color:var(--c-process); } .c-random { color:var(--c-random); }
+  .callout { border-left:3px solid var(--accent); background:var(--surface); padding:12px 16px; border-radius:0 10px 10px 0; margin:16px 0; max-width:760px; }
+  .callout strong { display:block; margin-bottom:2px; }
+  ol.steps { padding-left:20px; max-width:760px; } ol.steps li { margin:4px 0; }
+  footer { margin-top:56px; padding-top:16px; border-top:1px solid var(--line); color:var(--muted); font-size:13px; }
+  code { font-family:ui-monospace,Consolas,monospace; font-size:13px; }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>Test Failure Analytics</h1>
+  <p>Failure, yield and trend analysis of manufacturing test data: control charts, Pareto analysis,
+     and root-cause isolation that separates real defects from test-equipment and process problems.</p>
+</header>
+
+<div class="tiles">
+  <div class="tile"><div class="v">{{ "{:,}".format(eos.units) }}</div><div class="l">EOS-100 units tested over {{ eos.weeks }} weeks</div></div>
+  <div class="tile"><div class="v">{{ "%.1f"|format(eos.fpy * 100) }}%</div><div class="l">EOS-100 first-pass yield</div></div>
+  <div class="tile"><div class="v">3 of 3</div><div class="l">planted root causes isolated correctly</div></div>
+  <div class="tile"><div class="v">{{ "{:,}".format(secom.units) }}</div><div class="l">real SECOM production units, 590 sensors</div></div>
+  <div class="tile"><div class="v">{{ "%.2f"|format(secom.gap.shuffled_cv_auc) }} &rarr; {{ "%.2f"|format(secom.gap.chronological_auc) }}</div><div class="l">SECOM model AUC: shuffled CV vs. next-period reality</div></div>
+</div>
+
+<!-- ================================================================ EOS -->
+<div class="eyebrow">Part 1 &middot; Known-answer case study</div>
+<h2>EOS-100 sensor production: why is first-pass yield falling?</h2>
+<p>Twelve weeks of acceptance testing ({{ "{:,}".format(eos.units) }} units) in the same database schema as the
+   <a href="https://github.com/KyleEGibson/eo-sensor-test-station">EOS-100 test station</a>. First-pass yield fell from
+   {{ "%.0f"|format(eos.fpy_first * 100) }}% in the first three weeks to {{ "%.0f"|format(eos.fpy_last * 100) }}% in the last two.
+   The data is synthetic with three planted causes, so the method can be checked against a known answer;
+   the analysis never sees the answer key.</p>
+
+<div class="card">{{ eos.fig_weekly.html|safe }}
+  <details><summary>Table view</summary><div class="table-wrap">{{ eos.fig_weekly.table|safe }}</div></details></div>
+
+<div class="card">{{ eos.fig_pareto.html|safe }}
+  <details><summary>Table view</summary><div class="table-wrap">{{ eos.fig_pareto.table|safe }}</div></details></div>
+
+<div class="callout"><strong>The Pareto points the wrong way.</strong>
+  The top failure, <em>{{ eos.pareto_top.failure_mode }}</em> ({{ "%.0f"|format(eos.pareto_top.share_pct) }}% of failures),
+  is not a sensor defect at all: {{ "%.0f"|format(eos.by_mode["bus voltage"].no_fault_found_pct) }}% of those units passed when
+  retested on the other bench. Fixing the sensors' power supplies would have changed nothing.</div>
+
+<h3>Root cause isolation</h3>
+<table class="findings">
+  <thead><tr><th>Failure mode</th><th>First-pass failures</th><th>Classification</th><th>Isolated factor</th><th>Started failing</th><th>Control chart signal</th><th>Passed retest</th></tr></thead>
+  <tbody>
+  {% for f in eos.findings %}
+    <tr>
+      <td>{{ f.failure_mode }}</td>
+      <td>{{ f.failures }}</td>
+      <td><span class="tag {{ classes.get(f.classification, 'c-random') }}">{{ f.classification }}</span></td>
+      <td>{% if f.factor %}{{ f.factor|replace("_", " ") }} <strong>{{ f.level }}</strong><br><span class="muted">{{ "%.1f"|format(f.level_rate * 100) }}% vs {{ "%.1f"|format(f.rest_rate * 100) }}% elsewhere</span>{% else %}<span class="muted">none: stable background rate</span>{% endif %}</td>
+      <td>{{ "week %d"|format(f.onset_week) if f.onset_week else "—" }}</td>
+      <td>{{ "week %d"|format(f.spc_signal_week) if f.spc_signal_week else "—" }}</td>
+      <td>{{ "%.0f"|format(f.no_fault_found_pct) }}%</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h3>Method</h3>
+<ol class="steps">
+  <li><strong>When did it start?</strong> Each mode's weekly failure rate is checked against a p-chart built from weeks 1&ndash;3.</li>
+  <li><strong>What changed then?</strong> Station, shift, operator, firmware and component lots are screened with chi-square tests,
+      <em>only within the weeks after onset</em>, Bonferroni-corrected.</li>
+  <li><strong>Which factor is the real one?</strong> Each significant factor is re-tested with every other one held fixed
+      (stratified chi-square); factors that stop mattering are explained away.</li>
+  <li><strong>Unit or test?</strong> Retest outcomes separate real defects (fail again) from false failures (pass elsewhere).</li>
+</ol>
+<div class="callout"><strong>The naive approach gets two of three wrong.</strong>
+  Ranking factors by p-value over the whole history blames <em>{{ eos.naive_voltage.factor|replace("_"," ") }} {{ eos.naive_voltage.worst_level }}</em> for the voltage failures
+  (it was simply on the line during the same weeks) and <em>{{ eos.naive_cooldown.factor }} {{ eos.naive_cooldown.worst_level }}</em> for cooldown
+  (every operator works one shift, so operator stands in for shift). A test in the repository keeps this documented.</div>
+
+<h3>Test equipment: BENCH-02 calibration drift</h3>
+<div class="card">{{ eos.fig_voltage.html|safe }}
+  <details><summary>Table view</summary><div class="table-wrap">{{ eos.fig_voltage.table|safe }}</div></details></div>
+<p>BENCH-02's readings left their control limits in <strong>week {{ eos.by_mode["bus voltage"].spc_signal_week }}</strong>,
+   {{ eos.by_mode["bus voltage"].onset_week - eos.by_mode["bus voltage"].spc_signal_week }} weeks before any unit failed the 29 V limit, while BENCH-01
+   measuring the same population stayed flat. Monitoring the measurement, not only pass/fail, would have caught it before it cost yield.
+   <strong>Corrective action:</strong> recalibrate BENCH-02, add a daily reference-unit check per bench, and re-disposition the falsely failed units.</p>
+
+<h3>Component: gimbal motor lot G-2603</h3>
+<div class="card">{{ eos.fig_slew.html|safe }}
+  <details><summary>Table view</summary><div class="table-wrap">{{ eos.fig_slew.table|safe }}</div></details></div>
+<p>Slow slews appear only in units built with lot G-2603. Firmware 2.4.2 shipped two weeks earlier and also correlates with the failures,
+   but holding firmware fixed clears it: on firmware 2.4.2, lot G-2602 had {{ eos.slew_conf.loc[("2.4.2", "G-2602"), "failures"] }} failures in
+   {{ eos.slew_conf.loc[("2.4.2", "G-2602"), "units"] }} units, lot G-2603 had {{ eos.slew_conf.loc[("2.4.2", "G-2603"), "failures"] }} in {{ eos.slew_conf.loc[("2.4.2", "G-2603"), "units"] }}.
+   <strong>Corrective action:</strong> quarantine lot G-2603, return to supplier with this data, add a slew-rate check at incoming inspection.</p>
+
+<h3>Process / environment: swing-shift cooldown</h3>
+<div class="card">{{ eos.fig_cool.html|safe }}
+  <details><summary>Table view</summary><div class="table-wrap">{{ eos.fig_cool.table|safe }}</div></details></div>
+<p>From week {{ eos.by_mode["cooldown time"].onset_week }}, cooldown on the afternoon (swing) shift runs about 4 s slower; day shift is unchanged.
+   Units that fail pass on retest during the day shift, the signature of an environmental cause rather than a unit defect.
+   <strong>Corrective action:</strong> log lab ambient temperature with each run, service the HVAC, and hold cooldown testing when ambient is out of range.</p>
+
+<!-- ============================================================== SECOM -->
+<div class="eyebrow">Part 2 &middot; Real production data</div>
+<h2>SECOM semiconductor line: what the data can and cannot tell you</h2>
+<p>{{ "{:,}".format(secom.units) }} units from a real semiconductor manufacturing line ({{ secom.start.strftime("%b") }}&ndash;{{ secom.end.strftime("%b %Y") }}),
+   590 anonymized process sensors per unit and an in-house pass/fail test ({{ secom.failures }} failures, {{ "%.1f"|format(secom.fail_rate * 100) }}%).</p>
+
+<h3>Data cleaning</h3>
+<div class="table-wrap"><table class="data">
+  {% for k, v in secom.cleaning.items() %}<tr><td>{{ k }}</td><td>{{ "{:,}".format(v) }}</td></tr>{% endfor %}
+</table></div>
+
+<h3>Yield trend</h3>
+<div class="card">{{ secom.fig_p.html|safe }}
+  <details><summary>Table view</summary><div class="table-wrap">{{ secom.fig_p.table|safe }}</div></details></div>
+<p>{{ secom.trend_text }}</p>
+
+<h3>Which sensors separate failing units?</h3>
+<p>{{ secom.significant }} of {{ secom.cleaning["signals kept for analysis"] }} signals differ between passing and failing units
+   (Mann-Whitney U, false discovery rate &lt; 5%). The strongest is <strong>{{ secom.top_signal }}</strong>. But a ranking over the whole history
+   mixes two different eras of the process.</p>
+<div class="card">{{ secom.fig_drift.html|safe }}
+  <details><summary>Table view</summary><div class="table-wrap">{{ secom.fig_drift.table|safe }}</div></details></div>
+<p>{{ secom.top_signal }}'s level fell month by month along with the fail rate. It identifies <em>which era</em> a unit came from, and the early era
+   simply had more failures.</p>
+
+<div class="card">{{ secom.fig_stability.html|safe }}
+  <details><summary>Table view</summary><div class="table-wrap">{{ secom.fig_stability.table|safe }}</div></details></div>
+<p>Ranking signals on the earlier 70% of units and checking them on the later 30%, most top signals lose their separation.
+   {% if secom.holds %}Only <strong>{{ secom.holds|join(", ") }}</strong> holds up in both periods, making it the lead worth taking to process engineering.{% else %}None holds up in both periods.{% endif %}</p>
+
+<div class="callout"><strong>Validation choice changes the conclusion.</strong>
+  A random forest scores AUC {{ "%.2f"|format(secom.gap.shuffled_cv_auc) }} under shuffled 5-fold cross-validation, which looks useful.
+  Trained on earlier units and tested on later ones, as it would actually be deployed, it scores
+  {{ "%.2f"|format(secom.gap.chronological_auc) }}, close to chance (0.50). Shuffling lets the model learn the era instead of the failure.
+  On drifting production data, validate in time order.</div>
+
+<footer>
+  Generated {{ generated }} by <code>failure_analytics</code> v{{ version }} &middot;
+  <a href="{{ repo }}">source and methods</a> &middot;
+  SECOM data: McCann &amp; Johnston (2008), UCI Machine Learning Repository, CC BY 4.0.
+</footer>
+</main>
+
+<script>
+// Charts are built with light colors; re-resolve each role for dark mode.
+const THEMES = {{ themes|safe }};
+const darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
+const stroked = s => typeof s === "string" && (s.startsWith("x") || s.endsWith("-open"));
+
+function paint(gd, T) {
+  const idx = gd.data.map((_, i) => i);
+  const color = gd.data.map(t => T[t.meta || "series-1"]);
+  const ring = gd.data.map((t, i) => t.type === "bar" || !stroked(t.marker && t.marker.symbol) ? T.surface : color[i]);
+  const update = { "marker.color": color, "marker.line.color": ring, "line.color": color };
+  if (gd.data.some(t => t.type === "box")) update.fillcolor = gd.data.map(t => t.type === "box" ? T.band : undefined);
+  Plotly.restyle(gd, update, idx);
+  const axis = { gridcolor: T.grid, linecolor: T.axis, tickcolor: T.axis, "tickfont.color": T.muted, "title.font.color": T["ink-2"] };
+  const layout = {
+    paper_bgcolor: T.surface, plot_bgcolor: T.surface, "font.color": T["ink-2"], "title.font.color": T.ink,
+    "legend.font.color": T["ink-2"], "hoverlabel.bgcolor": T.surface, "hoverlabel.font.color": T.ink, "hoverlabel.bordercolor": T.axis,
+    shapes: (gd.layout.shapes || []).map(s => ({ ...s, line: { ...s.line, color: T[s.name] || T.limit } })),
+    annotations: (gd.layout.annotations || []).map(a => ({ ...a, font: { ...a.font, color: a.name === "critical" ? T.critical : T["ink-2"] } })),
+  };
+  for (const [k, v] of Object.entries(axis)) { layout["xaxis." + k] = v; layout["yaxis." + k] = v; }
+  Plotly.relayout(gd, layout);
+}
+
+function applyTheme() {
+  const forced = document.documentElement.dataset.theme;
+  const theme = forced || (darkQuery.matches ? "dark" : "light");
+  document.querySelectorAll(".plotly-graph-div").forEach(gd => { if (gd.data) paint(gd, THEMES[theme]); });
+}
+window.addEventListener("load", applyTheme);
+darkQuery.addEventListener("change", applyTheme);
+</script>
+</body>
+</html>

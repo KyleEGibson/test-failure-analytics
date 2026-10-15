@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 import numpy as np
 import pandas as pd
 from scipy.stats import mannwhitneyu
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.inspection import permutation_importance
 from sklearn.metrics import roc_auc_score
 
 
@@ -59,43 +56,6 @@ def rank_signals(X: pd.DataFrame, failed: pd.Series) -> pd.DataFrame:
     ranked = pd.DataFrame(rows)
     ranked["q_value"] = benjamini_hochberg(ranked["p_value"])
     return ranked.sort_values(["p_value", "separation"], ascending=[True, False]).reset_index(drop=True)
-
-
-@dataclass
-class ModelResult:
-    test_auc: float
-    train_units: int
-    test_units: int
-    test_failures: int
-    importance: pd.DataFrame
-
-
-def model_importance(train: pd.DataFrame, test: pd.DataFrame, signals: list[str],
-                     seed: int = 7, top: int = 15) -> ModelResult:
-    """Fit a random forest on earlier units and evaluate on later ones.
-
-    Importance is permutation importance measured on the held-out later units,
-    which reflects what the model actually relies on for unseen production
-    rather than what it memorized.
-    """
-    model = RandomForestClassifier(
-        n_estimators=300, min_samples_leaf=3, class_weight="balanced_subsample",
-        random_state=seed, n_jobs=-1,
-    )
-    model.fit(train[signals], train["failed"])
-    scores = model.predict_proba(test[signals])[:, 1]
-    auc = roc_auc_score(test["failed"], scores)
-    perm = permutation_importance(
-        model, test[signals], test["failed"], scoring="roc_auc",
-        n_repeats=10, random_state=seed, n_jobs=-1,
-    )
-    importance = (
-        pd.DataFrame({"signal": signals, "importance": perm.importances_mean, "std": perm.importances_std})
-        .sort_values("importance", ascending=False)
-        .head(top)
-        .reset_index(drop=True)
-    )
-    return ModelResult(float(auc), len(train), len(test), int(test["failed"].sum()), importance)
 
 
 def stability(train: pd.DataFrame, test: pd.DataFrame, ranked_on_train: pd.DataFrame, top: int = 10) -> pd.DataFrame:

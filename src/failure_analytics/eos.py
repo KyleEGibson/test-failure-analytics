@@ -226,7 +226,7 @@ def _classify(factor: str | None, nff_pct: float) -> str:
     return f"Associated with {factor}"
 
 
-def _week_of(first_pass: pd.DataFrame, history: pd.DataFrame) -> pd.Series:
+def week_of(first_pass: pd.DataFrame, history: pd.DataFrame) -> pd.Series:
     day0 = first_pass["started_at"].min().normalize()
     return ((history["started_at"].dt.normalize() - day0).dt.days // 7 + 1).astype(int)
 
@@ -260,7 +260,7 @@ def analyze(db: EOSDatabase, min_failures: int = 5) -> list[Finding]:
         history = db.history(mode)
         if top is not None and top["factor"] == "station":
             history = history[history["station"] == top["worst_level"]]
-        chart = weekly_xbar(history, _week_of(first_pass, history))
+        chart = weekly_xbar(history, week_of(first_pass, history))
 
         findings.append(Finding(
             failure_mode=mode,
