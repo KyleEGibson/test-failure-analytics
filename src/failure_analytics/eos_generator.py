@@ -4,7 +4,7 @@ The output uses the same schema as the EOS-100 test station's results.db
 (runs, test_results, measurements), plus a ``units`` table that stands in for
 manufacturing records (component lots, build date).
 
-PLANTED ROOT CAUSES — the answer key. The analysis code never reads this
+PLANTED ROOT CAUSES (the answer key). The analysis code never reads this
 module; tests/test_known_answers.py checks that the analysis rediscovers them.
 
 1. Component lot (real defect): gimbal motor lot G-2603, used from week 7,

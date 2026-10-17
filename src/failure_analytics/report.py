@@ -90,7 +90,7 @@ def _eos_section(db_path: Path) -> dict:
 
 
 def describe_p_chart(chart: pd.DataFrame, violations: pd.DataFrame) -> str:
-    """Plain-language summary of a p-chart, written from the rule violations."""
+    # build the trend paragraph from the rule violations so it always matches the chart
     def week(ts) -> str:
         return f"{ts.day} {ts:%b}"
 
@@ -100,7 +100,7 @@ def describe_p_chart(chart: pd.DataFrame, violations: pd.DataFrame) -> str:
     low = [w for w in flagged if z[w] < 0]
     beyond = chart.index[chart["p"] > chart["ucl"]]
     if not len(flagged):
-        return "The weekly fail rate stays within its control limits with no run-rule violations: the process is in statistical control."
+        return "The weekly fail rate stays inside its control limits with no run-rule violations, so the process is in statistical control."
     parts = []
     if len(beyond):
         parts.append(f"The week of {', '.join(week(w) for w in beyond)} broke the upper control limit")
@@ -119,7 +119,7 @@ def describe_p_chart(chart: pd.DataFrame, violations: pd.DataFrame) -> str:
     if len(parts) > 2:
         sentence += " " + parts[2] + "."
     return (sentence[0].upper() + sentence[1:] +
-            " The process was not stable over this period, which matters for every analysis below.")
+            " So the process wasn't stable over this period, and the analysis below has to account for that.")
 
 
 def _secom_section() -> dict:

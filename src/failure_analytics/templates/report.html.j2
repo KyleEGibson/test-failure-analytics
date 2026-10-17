@@ -73,7 +73,6 @@
   <div class="tile"><div class="v">{{ "%.2f"|format(secom.gap.shuffled_cv_auc) }} &rarr; {{ "%.2f"|format(secom.gap.chronological_auc) }}</div><div class="l">SECOM model AUC: shuffled CV vs. next-period reality</div></div>
 </div>
 
-<!-- ================================================================ EOS -->
 <div class="eyebrow">Part 1 &middot; Known-answer case study</div>
 <h2>EOS-100 sensor production: why is first-pass yield falling?</h2>
 <p>Twelve weeks of acceptance testing ({{ "{:,}".format(eos.units) }} units) in the same database schema as the
@@ -90,8 +89,8 @@
 
 <div class="callout"><strong>The Pareto points the wrong way.</strong>
   The top failure, <em>{{ eos.pareto_top.failure_mode }}</em> ({{ "%.0f"|format(eos.pareto_top.share_pct) }}% of failures),
-  is not a sensor defect at all: {{ "%.0f"|format(eos.by_mode["bus voltage"].no_fault_found_pct) }}% of the retested units passed
-  on the other bench. Fixing the sensors' power supplies would have changed nothing.</div>
+  isn't a sensor defect: {{ "%.0f"|format(eos.by_mode["bus voltage"].no_fault_found_pct) }}% of the retested units passed
+  on the other bench.</div>
 
 <h3>Root cause isolation</h3>
 <table class="findings">
@@ -103,8 +102,8 @@
       <td>{{ f.failures }}</td>
       <td><span class="tag {{ classes.get(f.classification, 'c-random') }}">{{ f.classification }}</span></td>
       <td>{% if f.factor %}{{ f.factor|replace("_", " ") }} <strong>{{ f.level }}</strong><br><span class="muted">{{ "%.1f"|format(f.level_rate * 100) }}% vs {{ "%.1f"|format(f.rest_rate * 100) }}% elsewhere</span>{% else %}<span class="muted">none: stable background rate</span>{% endif %}</td>
-      <td>{{ "week %d"|format(f.onset_week) if f.onset_week else "—" }}</td>
-      <td>{{ "week %d"|format(f.spc_signal_week) if f.spc_signal_week else "—" }}</td>
+      <td>{{ "week %d"|format(f.onset_week) if f.onset_week else "-" }}</td>
+      <td>{{ "week %d"|format(f.spc_signal_week) if f.spc_signal_week else "-" }}</td>
       <td>{{ "%.0f"|format(f.no_fault_found_pct) }}%</td>
     </tr>
   {% endfor %}
@@ -122,15 +121,15 @@
 </ol>
 <div class="callout"><strong>The naive approach gets two of three wrong.</strong>
   Ranking factors by p-value over the whole history blames <em>{{ eos.naive_voltage.factor|replace("_"," ") }} {{ eos.naive_voltage.worst_level }}</em> for the voltage failures
-  (it was simply on the line during the same weeks) and <em>{{ eos.naive_cooldown.factor }} {{ eos.naive_cooldown.worst_level }}</em> for cooldown
-  (every operator works one shift, so operator stands in for shift). A test in the repository keeps this documented.</div>
+  (it was just on the line during the same weeks) and <em>{{ eos.naive_cooldown.factor }} {{ eos.naive_cooldown.worst_level }}</em> for cooldown
+  (every operator works one shift, so operator stands in for shift). There's a test in the repo that checks this.</div>
 
 <h3>Test equipment: BENCH-02 calibration drift</h3>
 <div class="card">{{ eos.fig_voltage.html|safe }}
   <details><summary>Table view</summary><div class="table-wrap">{{ eos.fig_voltage.table|safe }}</div></details></div>
 <p>BENCH-02's readings left their control limits in <strong>week {{ eos.by_mode["bus voltage"].spc_signal_week }}</strong>,
    {{ eos.by_mode["bus voltage"].onset_week - eos.by_mode["bus voltage"].spc_signal_week }} weeks before any unit failed the 29 V limit, while BENCH-01
-   measuring the same population stayed flat. Monitoring the measurement, not only pass/fail, would have caught it before it cost yield.
+   measuring the same population stayed flat. A chart on the readings would have caught it before any yield was lost.
    <strong>Corrective action:</strong> recalibrate BENCH-02, add a daily reference-unit check per bench, and re-disposition the falsely failed units.</p>
 
 <h3>Component: gimbal motor lot G-2603</h3>
@@ -145,10 +144,9 @@
 <div class="card">{{ eos.fig_cool.html|safe }}
   <details><summary>Table view</summary><div class="table-wrap">{{ eos.fig_cool.table|safe }}</div></details></div>
 <p>From week {{ eos.by_mode["cooldown time"].onset_week }}, cooldown on the afternoon (swing) shift runs about 4 s slower; day shift is unchanged.
-   Units that fail pass on retest during the day shift, the signature of an environmental cause rather than a unit defect.
+   Units that fail pass on retest during the day shift, which points at the environment and not the unit.
    <strong>Corrective action:</strong> log lab ambient temperature with each run, service the HVAC, and hold cooldown testing when ambient is out of range.</p>
 
-<!-- ============================================================== SECOM -->
 <div class="eyebrow">Part 2 &middot; Real production data</div>
 <h2>SECOM semiconductor line: what the data can and cannot tell you</h2>
 <p>{{ "{:,}".format(secom.units) }} units from a real semiconductor manufacturing line ({{ secom.start.strftime("%b") }}&ndash;{{ secom.end.strftime("%b %Y") }}),
@@ -166,12 +164,11 @@
 
 <h3>Which sensors separate failing units?</h3>
 <p>{{ secom.significant }} of {{ secom.cleaning["signals kept for analysis"] }} signals differ between passing and failing units
-   (Mann-Whitney U, false discovery rate &lt; 5%). The strongest is <strong>{{ secom.top_signal }}</strong>. But a ranking over the whole history
-   mixes two different eras of the process.</p>
+   (Mann-Whitney U, false discovery rate &lt; 5%). The strongest is <strong>{{ secom.top_signal }}</strong>, but ranking over the whole history mixes two different eras of the process.</p>
 <div class="card">{{ secom.fig_drift.html|safe }}
   <details><summary>Table view</summary><div class="table-wrap">{{ secom.fig_drift.table|safe }}</div></details></div>
 <p>{{ secom.top_signal }}'s level fell month by month along with the fail rate. It identifies <em>which era</em> a unit came from, and the early era
-   simply had more failures.</p>
+   had more failures.</p>
 
 <div class="card">{{ secom.fig_stability.html|safe }}
   <details><summary>Table view</summary><div class="table-wrap">{{ secom.fig_stability.table|safe }}</div></details></div>
@@ -181,8 +178,7 @@
 <div class="callout"><strong>Validation choice changes the conclusion.</strong>
   A random forest scores AUC {{ "%.2f"|format(secom.gap.shuffled_cv_auc) }} under shuffled 5-fold cross-validation, which looks useful.
   Trained on earlier units and tested on later ones, as it would actually be deployed, it scores
-  {{ "%.2f"|format(secom.gap.chronological_auc) }}, close to chance (0.50). Shuffling lets the model learn the era instead of the failure.
-  On drifting production data, validate in time order.</div>
+  {{ "%.2f"|format(secom.gap.chronological_auc) }}, close to chance (0.50). Shuffling lets the model learn the era instead of the failure.</div>
 
 <footer>
   Generated {{ generated }} by <code>failure_analytics</code> v{{ version }} &middot;

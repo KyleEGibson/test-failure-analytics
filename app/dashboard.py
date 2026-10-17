@@ -2,9 +2,7 @@
 
     streamlit run app/dashboard.py
 
-Explore the EOS-100 production history (or upload a test station results.db)
-and the SECOM production data. Filters sit in one row above the charts they
-scope.
+EOS-100 production history (or upload a station results.db) and SECOM.
 """
 
 from __future__ import annotations
@@ -98,7 +96,7 @@ with eos_tab:
 
     t1, t2, t3, t4 = st.columns(4)
     t1.metric("Units (first pass)", f"{len(view):,}")
-    t2.metric("First-pass yield", f"{1 - view['failed'].mean():.1%}" if len(view) else "—")
+    t2.metric("First-pass yield", f"{1 - view['failed'].mean():.1%}" if len(view) else "-")
     t3.metric("Failing units", f"{int(view['failed'].sum()):,}")
     t4.metric("Failure modes seen", view_failures["failure_mode"].nunique())
 

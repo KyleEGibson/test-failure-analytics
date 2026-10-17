@@ -1,10 +1,7 @@
 """Plotly figure builders for the report and dashboard.
 
-Colors are assigned by *role* (series-1, limit, critical, ...) through each
-trace's ``meta`` and each shape/annotation's ``name``. ``apply_theme`` resolves
-roles for one theme in Python, and the report's script re-resolves them in the
-browser when the reader uses dark mode. Palette and roles follow a validated
-colorblind-safe categorical order (blue, orange, aqua).
+Traces/shapes carry a color *role* (series-1, limit, critical...) in meta/name
+instead of a hex value, so the report's JS can swap the palette for dark mode.
 """
 
 from __future__ import annotations
@@ -46,8 +43,7 @@ def _base(fig: go.Figure, title: str, y_title: str, x_title: str = "", height: i
 
 
 def _hline(fig: go.Figure, y: float, label: str, role: str = "limit", dash: str = "dash") -> None:
-    """Horizontal threshold line with a right-aligned label. Thresholds are dashed;
-    gridlines and axes never are."""
+    """Dashed threshold line with a label on the right."""
     fig.add_shape(type="line", xref="paper", x0=0, x1=1, y0=y, y1=y, name=role,
                   line={"width": 1.5, "dash": dash})
     fig.add_annotation(xref="paper", x=1, y=y, text=label, showarrow=False, xanchor="right",
@@ -101,9 +97,6 @@ def apply_theme(fig: go.Figure, theme: dict[str, str]) -> go.Figure:
     for note in fig.layout.annotations:
         note.font.color = theme["critical"] if note.name == "critical" else theme["ink-2"]
     return fig
-
-
-# ------------------------------------------------------------------- EOS-100
 
 
 def weekly_failures_by_mode(first_pass: pd.DataFrame, failures: pd.DataFrame, top_modes: list[str]) -> tuple[go.Figure, pd.DataFrame]:
@@ -184,9 +177,6 @@ def weekly_mean_by_level(values: pd.DataFrame, level: str, measurement: str, usl
     _hline(fig, usl, f"Upper spec {usl:g} {units}", role="critical")
     fig.update_xaxes(dtick=1)
     return _base(fig, f"{measurement}: weekly mean by {level}", f"Mean {measurement} ({units})", "Production week"), table
-
-
-# --------------------------------------------------------------------- SECOM
 
 
 def p_chart(chart: pd.DataFrame, violations: pd.DataFrame, title: str) -> tuple[go.Figure, pd.DataFrame]:

@@ -20,9 +20,6 @@ def findings(db):
     return {f.failure_mode: f for f in eos.analyze(db)}
 
 
-# ------------------------------------------------------------ data and SQL
-
-
 def test_generator_is_deterministic(tmp_path):
     def snapshot(path):
         with sqlite3.connect(path) as conn:
@@ -87,9 +84,6 @@ def test_plain_station_database_without_units_table(db, tmp_path):
     assert plain.read_bytes() == before
 
 
-# --------------------------------------------------------- statistics
-
-
 def test_conditional_p_explains_away_nested_factor():
     """Operators nested in shifts: operator stops mattering once shift is held fixed."""
     rng = np.random.default_rng(3)
@@ -113,9 +107,6 @@ def test_onset_week_none_for_stable_process():
     weeks = np.repeat(np.arange(1, 9), 100)
     failed = pd.Series(np.random.default_rng(5).random(800) < 0.02)
     assert eos.onset_week(pd.DataFrame({"week": weeks}), failed) is None
-
-
-# ------------------------------------------------- known answers (planted)
 
 
 def test_finds_supplier_lot(findings):
